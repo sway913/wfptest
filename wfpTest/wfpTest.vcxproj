@@ -103,9 +103,10 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>common\src;daemon\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,18 +152,43 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common\src\builtin\util.cpp" />
+    <ClCompile Include="common\src\win\win_com.cpp" />
+    <ClCompile Include="common\src\win\win_linkreader.cpp" />
+    <ClCompile Include="common\src\win\win_messagewnd.cpp" />
+    <ClCompile Include="common\src\win\win_util.cpp" />
+    <ClCompile Include="daemon\src\daemon.cpp" />
+    <ClCompile Include="daemon\src\win\servicemonitor.cpp" />
+    <ClCompile Include="daemon\src\win\win_daemon.cpp" />
+    <ClCompile Include="daemon\src\win\win_firewall.cpp" />
     <ClCompile Include="wfpTest.cpp" />
-    <ClCompile Include="win_firewall.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="brand.h" />
-    <ClInclude Include="service_inl.h" />
-    <ClInclude Include="version.h" />
-    <ClInclude Include="win.h" />
-    <ClInclude Include="win_firewall.h" />
+    <ClInclude Include="common\src\brand.h" />
+    <ClInclude Include="common\src\builtin\common.h" />
+    <ClInclude Include="common\src\builtin\error.h" />
+    <ClInclude Include="common\src\builtin\util.h" />
+    <ClInclude Include="common\src\common.h" />
+    <ClInclude Include="common\src\service_inl.h" />
+    <ClInclude Include="common\src\version.h" />
+    <ClInclude Include="common\src\win\win_com.h" />
+    <ClInclude Include="common\src\win\win_linkreader.h" />
+    <ClInclude Include="common\src\win\win_messagewnd.h" />
+    <ClInclude Include="common\src\win\win_util.h" />
+    <ClInclude Include="daemon\src\daemon.h" />
+    <ClInclude Include="daemon\src\win\inlines.h" />
+    <ClInclude Include="daemon\src\win\servicemonitor.h" />
+    <ClInclude Include="daemon\src\win\service_inl.h" />
+    <ClInclude Include="daemon\src\win\tap_inl.h" />
+    <ClInclude Include="daemon\src\win\win.h" />
+    <ClInclude Include="daemon\src\win\win_daemon.h" />
+    <ClInclude Include="daemon\src\win\win_firewall.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="service.inl" />
+    <None Include="common\src\service.inl" />
+    <None Include="cpp.hint" />
+    <None Include="daemon\src\win\service.inl" />
+    <None Include="daemon\src\win\tap.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

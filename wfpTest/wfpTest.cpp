@@ -2,11 +2,14 @@
 //
 
 #include <iostream>
-#include "win_firewall.h"
+#include "win\win_daemon.h"
 
 int main()
 {
-    std::cout << "Hello wfp test!\n";
+	WinDaemon* _daemon = new WinDaemon();
+	_daemon->start();
+	_daemon->queueApplyFirewallRules();
+    /*std::cout << "Hello wfp test!\n";
 	FirewallEngine* _firewall = new FirewallEngine();
 	if (!_firewall->open() || !_firewall->installProvider())
 	{
@@ -18,7 +21,7 @@ int main()
 	{
 		_firewall->removeAll();
 	}
-
+*/
 	std::cout << "end wfp test!\n";
 	return 0;
 }

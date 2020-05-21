@@ -1,13 +1,12 @@
 #include "win_firewall.h"
 #include "brand.h"
-#include "version.h"
+#include "win/inlines.h"
 #include <iostream>
 #include <functional>
 #include <memory>
 #include <string>
 #include <system_error>
 #include <type_traits>
-#include "service.inl"
 
 
 GUID zeroGuid = { 0 };

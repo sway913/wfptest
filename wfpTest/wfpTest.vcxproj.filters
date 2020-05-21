@@ -18,29 +18,102 @@
     <ClCompile Include="wfpTest.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="win_firewall.cpp">
+    <ClCompile Include="common\src\win\win_com.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="common\src\win\win_linkreader.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="common\src\win\win_messagewnd.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="common\src\win\win_util.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="daemon\src\win\win_firewall.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="common\src\builtin\util.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="daemon\src\win\win_daemon.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="daemon\src\win\servicemonitor.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="daemon\src\daemon.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="win_firewall.h">
+    <ClInclude Include="common\src\builtin\common.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="brand.h">
+    <ClInclude Include="common\src\builtin\error.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="win.h">
+    <ClInclude Include="common\src\win\win_com.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="version.h">
+    <ClInclude Include="common\src\win\win_linkreader.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="service_inl.h">
+    <ClInclude Include="common\src\win\win_messagewnd.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\win\win_util.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\brand.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\service_inl.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\version.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\inlines.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\win.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\win_firewall.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\src\builtin\util.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\win_daemon.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\servicemonitor.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\service_inl.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\tap_inl.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\daemon.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="service.inl">
+    <None Include="common\src\service.inl">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="cpp.hint" />
+    <None Include="daemon\src\win\service.inl">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="daemon\src\win\tap.inl">
       <Filter>头文件</Filter>
     </None>
   </ItemGroup>
