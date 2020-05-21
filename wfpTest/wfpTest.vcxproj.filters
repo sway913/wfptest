@@ -45,6 +45,9 @@
     <ClCompile Include="daemon\src\daemon.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="daemon\src\win\win_appmonitor.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\src\builtin\common.h">
@@ -102,6 +105,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="daemon\src\daemon.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="daemon\src\win\win_appmonitor.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

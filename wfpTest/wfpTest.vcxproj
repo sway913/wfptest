@@ -159,6 +159,7 @@
     <ClCompile Include="common\src\win\win_util.cpp" />
     <ClCompile Include="daemon\src\daemon.cpp" />
     <ClCompile Include="daemon\src\win\servicemonitor.cpp" />
+    <ClCompile Include="daemon\src\win\win_appmonitor.cpp" />
     <ClCompile Include="daemon\src\win\win_daemon.cpp" />
     <ClCompile Include="daemon\src\win\win_firewall.cpp" />
     <ClCompile Include="wfpTest.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="daemon\src\win\service_inl.h" />
     <ClInclude Include="daemon\src\win\tap_inl.h" />
     <ClInclude Include="daemon\src\win\win.h" />
+    <ClInclude Include="daemon\src\win\win_appmonitor.h" />
     <ClInclude Include="daemon\src\win\win_daemon.h" />
     <ClInclude Include="daemon\src\win\win_firewall.h" />
   </ItemGroup>

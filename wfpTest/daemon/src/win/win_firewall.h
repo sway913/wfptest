@@ -36,7 +36,9 @@ public:
 	WfpFilterObject(const GUID& srcGuid) {
 		memcpy(this, &srcGuid, sizeof(GUID));
 	}
-	WfpFilterObject() {}
+	WfpFilterObject() {
+		memset(this, 0, sizeof(GUID));
+	}
 };
 
 class WfpCalloutObject : public GUID {
@@ -44,7 +46,9 @@ public:
 	WfpCalloutObject(const GUID& srcGuid) {
 		memcpy(this, &srcGuid, sizeof(GUID));
 	}
-	WfpCalloutObject() {}
+	WfpCalloutObject() {
+		memset(this, 0, sizeof(GUID));
+	}
 };
 
 class WfpProviderContextObject : public GUID {
@@ -52,7 +56,9 @@ public:
 	WfpProviderContextObject(const GUID& srcGuid) {
 		memcpy(this, &srcGuid, sizeof(GUID));
 	}
-	WfpProviderContextObject() {}
+	WfpProviderContextObject() {
+		memset(this, 0, sizeof(GUID));
+	}
 };
 
 
@@ -250,7 +256,7 @@ struct ConditionalFirewallFilter : public BasicFirewallFilter<action, direction,
 		conditions.resize(totalConditionCount);
 		processInlineConditions(std::forward<ConditionTypes>(inlineConditions)...);
 
-		this->numFilterConditions = totalConditionCount;
+		this->numFilterConditions = (uint32_t)totalConditionCount;
 		this->filterCondition = conditions.empty() ? nullptr : conditions.data();
 	}
 
@@ -338,7 +344,7 @@ struct IPAddressFilter : public IPSubnetFilter<action, direction, ipVersion>
 template<FWP_ACTION_TYPE action, FWP_DIRECTION direction, FWP_IP_VERSION ipVersion>
 struct LocalhostFilter : public IPAddressFilter<action, direction, ipVersion>
 {
-	LocalhostFilter(uint8_t weight = 10) : IPAddressFilter(ipVersion == FWP_IP_VERSION_V6 ? "0" : "1", weight) {}
+	LocalhostFilter(uint8_t weight = 10) : IPAddressFilter<action, direction, ipVersion>(ipVersion == FWP_IP_VERSION_V6 ? "0" : "1", weight) {}
 };
 
 
@@ -411,7 +417,7 @@ struct ApplicationFilter : public ConditionalFirewallFilter<1, action, direction
 	FWP_BYTE_BLOB* applicationBlob;
 
 	template <typename...ConditionTypes>
-	ApplicationFilter(const std::wstring& applicationPath, uint8_t weight = 10, ConditionTypes&& ...inlineConditions) : ConditionalFirewallFilter(weight, std::forward<ConditionTypes>(inlineConditions)...)
+	ApplicationFilter(const std::wstring& applicationPath, uint8_t weight = 10, ConditionTypes&& ...inlineConditions) : ConditionalFirewallFilter<1, action, direction, ipVersion>(weight, std::forward<ConditionTypes>(inlineConditions)...)
 	{
 		if (DWORD error = FwpmGetAppIdFromFileName(applicationPath.c_str(), &applicationBlob))
 		{
@@ -430,8 +436,65 @@ struct ApplicationFilter : public ConditionalFirewallFilter<1, action, direction
 	}
 };
 
+
+// A WFP app ID that can be used as a key in containers.
+class AppIdKey
+{
+public:
+	AppIdKey() : _pBlob{} {} // Empty by default
+	// Load the app ID for an app, which can be a shortcut or executable path.
+	// Results in an empty AppIdKey if it can't be loaded.
+	// The caller must try to load WinLinkReader and provide it if it was
+	// loaded.  If pReader is nullptr, AppIdKey won't be able to load the app ID
+	// for a shortcut.
+	// The target executable path can optionally be returned; see reset().
+	explicit AppIdKey(const std::wstring &appPath, std::wstring *pTarget = nullptr)
+		: AppIdKey{} {
+		reset(appPath, pTarget);
+	}
+	AppIdKey(AppIdKey &&other) : AppIdKey{} { *this = std::move(other); }
+	~AppIdKey() { clear(); }
+
+public:
+	AppIdKey &operator=(AppIdKey &&other)
+	{
+		std::swap(_pBlob, other._pBlob);
+		return *this;
+	}
+
+	bool operator==(const AppIdKey &other) const;
+	bool operator!=(const AppIdKey &other) const { return !(*this == other); }
+	bool operator<(const AppIdKey &other) const;
+
+
+
+	explicit operator bool() const { return _pBlob; }
+	bool operator!() const { return empty(); }
+
+	void swap(AppIdKey &other) { std::swap(_pBlob, other._pBlob); }
+
+	bool empty() const { return !_pBlob; }
+	// data() returns a mutable FWP_BYTE_BLOB* since the corresponding member of
+	// FWP_CONDITION_VALUE is not const
+	FWP_BYTE_BLOB *data() const { return _pBlob; }
+	void clear();
+	// Load the app ID for an app.  If it can't be loaded, AppIdKey becomes
+	// empty.
+	// Like the constructor, the caller must try to load WinLinkReader and
+	// provide it if it was loaded.
+	// Optionally, if the target executable path is needed, a std::wstring can
+	// be passed to pTarget.  If an app ID is found, this is populated with the
+	// target executable path (the link target for a link or appPath otherwise).
+	void reset(const std::wstring &appPath, std::wstring *pTarget = nullptr);
+
+private:
+	FWP_BYTE_BLOB *_pBlob;
+};
+
 // Filter to allow or block everything
 template<FWP_ACTION_TYPE action, FWP_DIRECTION direction, FWP_IP_VERSION ipVersion>
 using EverythingFilter = BasicFirewallFilter<action, direction, ipVersion>;
+
+
 
 #endif // WIN_FIREWALL_H

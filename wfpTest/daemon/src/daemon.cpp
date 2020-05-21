@@ -123,9 +123,9 @@ void Daemon::reapplyFirewallRules()
     // query authoritative DNS servers, and we want that to go through the VPN.)
 
 	params.blockAll = false;
-	params.allowVPN = true;
+	params.allowVPN = false;
     params.blockIPv6 = false;
-	params.allowLAN = true;
+	params.allowLAN = false;
     // Block DNS when:
     // - not using Existing DNS
     // - the VPN connection is enabled, and

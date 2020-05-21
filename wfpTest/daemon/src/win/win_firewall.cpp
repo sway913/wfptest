@@ -32,6 +32,88 @@ static FWPM_SUBLAYER g_wfpSublayer = {
 };
 
 
+bool AppIdKey::operator==(const AppIdKey &other) const
+{
+	if (!_pBlob && !other._pBlob)
+		return true;    // Both empty
+	if (!_pBlob || !other._pBlob)
+		return false;   // One is empty but the other isn't
+
+	return std::equal(_pBlob->data, _pBlob->data + _pBlob->size,
+		other._pBlob->data, other._pBlob->data + other._pBlob->size);
+}
+
+bool AppIdKey::operator<(const AppIdKey &other) const
+{
+	if (!_pBlob && !other._pBlob)
+		return false;   // Both empty - equal
+	// Empties are less than non-empties
+	if (!_pBlob)
+		return true; // This is empty
+	if (!other._pBlob)
+		return false; // Other is empty
+
+	return std::lexicographical_compare(_pBlob->data, _pBlob->data + _pBlob->size,
+		other._pBlob->data, other._pBlob->data + other._pBlob->size);
+}
+
+
+void AppIdKey::clear()
+{
+	if (_pBlob)
+	{
+		::FwpmFreeMemory(reinterpret_cast<void**>(&_pBlob));
+		_pBlob = nullptr;
+	}
+}
+
+void AppIdKey::reset(const std::wstring &appPath, std::wstring *pTarget)
+{
+	if (pTarget)
+		*pTarget = {};
+
+	clear();
+
+	// If it's a shell link, get the ID for the link target.
+	size_t pos = appPath.find_last_of(L".lnk");
+	if (pos > 0)
+	{
+		std::wstring linkTarget;
+		// linkReader traces for any of these failures (other than
+		// linkReader failing to load entirely, which was traced by the caller)
+		/*if (pReader && pReader->loadLink(appPath))
+			linkTarget = pReader->getLinkTarget(appPath);*/
+		if (linkTarget.empty())
+		{
+			std::cout << "Can't find link target for" << appPath.c_str() << std::endl;
+		}
+		else if (DWORD error = FwpmGetAppIdFromFileName(linkTarget.c_str(), &_pBlob))
+		{
+			std::cout << "Can't get app ID for" << appPath.c_str() << "->" << linkTarget.c_str() << "-" << std::endl;
+			_pBlob = nullptr;
+		}
+		else if (_pBlob)
+		{
+			std::cout << "Got app ID for" << appPath.c_str() << "->" << linkTarget.c_str() << std::endl;
+			if (pTarget)
+				*pTarget = std::move(linkTarget);
+		}
+	}
+	// Otherwise, not a shell link, try to get an app ID from this file
+	else if (DWORD error = FwpmGetAppIdFromFileName(appPath.c_str(), &_pBlob))
+	{
+		std::cout << "Can't get app ID for" << appPath.c_str() << "-" << std::endl;
+		_pBlob = nullptr;
+		// Rely on the filter addition failing later
+	}
+	else if (_pBlob)
+	{
+		//qInfo() << "Got app ID for" << appPath;
+		if (pTarget)
+			*pTarget = appPath;
+	}
+}
+
 FirewallFilter::FirewallFilter()
 {
 	memset(static_cast<FWPM_FILTER*>(this), 0, sizeof(FWPM_FILTER));
@@ -91,7 +173,7 @@ bool FirewallEngine::open()
 	ServiceHandle service{ ::OpenServiceW(_scm, _serviceName.c_str(), SERVICE_QUERY_STATUS) };
 	if (service != nullptr)
 	{
-		std::cout << "Service" << "PiaWfpCallout" << "is installed \n";
+		std::cout << "Service" << " PiaWfpCallout" << " is installed \n";
 		//reportServiceState(NetExtensionState::Installed);
 		//return true;
 	}
@@ -171,6 +253,7 @@ bool FirewallEngine::remove(const WfpFilterObject &filter)
 {
 	if (DWORD error = FwpmFilterDeleteByKey(_handle, &filter))
 	{
+		std::cout << "WfpFilterObject remove failed  \n";
 		//qCritical(SystemError{ HERE, error });
 		return false;
 	}
@@ -181,6 +264,7 @@ bool FirewallEngine::remove(const WfpCalloutObject &callout)
 {
 	if (DWORD error = FwpmCalloutDeleteByKey(_handle, &callout))
 	{
+		std::cout << "WfpCalloutObject remove failed  \n";
 		//qCritical(SystemError{ HERE, error });
 		return false;
 	}
@@ -191,6 +275,7 @@ bool FirewallEngine::remove(const WfpProviderContextObject &providerContext)
 {
 	if (DWORD error = FwpmProviderContextDeleteByKey(_handle, &providerContext))
 	{
+		std::cout << "WfpProviderContextObject remove failed  \n";
 		//qCritical(SystemError{ HERE, error });
 		return false;
 	}
@@ -202,6 +287,7 @@ WfpFilterObject FirewallEngine::add(const FirewallFilter& filter)
 	UINT64 id = 0;
 	if (DWORD error = FwpmFilterAdd(_handle, &filter, NULL, &id))
 	{
+		std::cout << "FirewallFilter add failed  \n";
 		//qCritical(SystemError(HERE, error));
 		return { zeroGuid };
 	}
@@ -213,6 +299,7 @@ WfpCalloutObject FirewallEngine::add(const Callout& mCallout)
 	UINT32 id = 0;
 	if (DWORD error = FwpmCalloutAdd(_handle, &mCallout, NULL, &id))
 	{
+		std::cout << "Callout add failed  \n";
 		//qCritical(SystemError(HERE, error));
 		return { zeroGuid };
 	}
@@ -224,6 +311,7 @@ WfpProviderContextObject FirewallEngine::add(const ProviderContext& providerCont
 	UINT64 id = 0;
 	if (DWORD error = FwpmProviderContextAdd(_handle, &providerContext, NULL, &id))
 	{
+		std::cout << "ProviderContext add failed  \n";
 		//qCritical(SystemError(HERE, error));
 		return { zeroGuid };
 	}

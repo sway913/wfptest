@@ -25,6 +25,7 @@
 
 #include "daemon.h"
 #include "win_firewall.h"
+#include "win_appmonitor.h"
 #include "win/win_messagewnd.h"
 
 //inline const PMIB_IPINTERFACE_ROW foo{nullptr};

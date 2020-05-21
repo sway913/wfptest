@@ -21,6 +21,8 @@
 
 #include "win_daemon.h"
 #include "win.h"
+#include <set>
+
 
 // The 'bind' callout GUID is the GUID used in 1.7 and earlier; the WFP callout
 // only handled the bind layer in those releases.
@@ -222,9 +224,9 @@ LRESULT WinDaemon::proc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 static void logFilter(const char* filterName, int currentState, bool enableCondition, bool invalidateCondition = false)
 {
 	if (enableCondition ? currentState != 1 || invalidateCondition : currentState != 0)
-		printf("%s: %s -> %s", filterName, currentState == 1 ? "ON" : currentState == 0 ? "OFF" : "MIXED", enableCondition ? "ON" : "OFF");
+		printf("%s: %s -> %s \n", filterName, currentState == 1 ? "ON" : currentState == 0 ? "OFF" : "MIXED", enableCondition ? "ON" : "OFF");
 	else
-		printf("%s: %s", filterName, enableCondition ? "ON" : "OFF");
+		printf("%s: %s  \n", filterName, enableCondition ? "ON" : "OFF");
 }
 
 static void logFilter(const char* filterName, const GUID& filterVariable, bool enableCondition, bool invalidateCondition = false)
@@ -266,7 +268,7 @@ void WinDaemon::applyFirewallRules(const FirewallParams& params)
         if ((removeCondition) && filterVariable != zeroGuid) \
         { \
             if (!_firewall->remove(filterVariable)) { \
-                std::cout << "Failed to remove WFP filter" << #filterVariable; \
+                std::cout << "Failed to remove WFP filter:" << #filterVariable << std::endl; \
             } \
             filterVariable = {zeroGuid}; \
         } \
@@ -315,6 +317,7 @@ void WinDaemon::applyFirewallRules(const FirewallParams& params)
 	// Block all other traffic when killswitch is enabled. If blockIPv6 is
 	// true, block IPv6 regardless of killswitch state.
 	logFilter("blockAll(IPv4)", _filters.blockAll[0], params.blockAll);
+	WfpFilterObject fobj = _filters.blockAll[0];
 	updateBooleanFilter(blockAll[0], params.blockAll, EverythingFilter<FWP_ACTION_BLOCK, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(0));
 	logFilter("blockAll(IPv6)", _filters.blockAll[1], params.blockAll || params.blockIPv6);
 	updateBooleanFilter(blockAll[1], params.blockAll || params.blockIPv6, EverythingFilter<FWP_ACTION_BLOCK, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>(params.blockIPv6 ? 4 : 0));
@@ -362,7 +365,20 @@ void WinDaemon::applyFirewallRules(const FirewallParams& params)
 	logFilter("allowDNS(2)", _filters.permitDNS[1], 0, 0);
 	updateBooleanInvalidateFilter(permitDNS[1], 0, 0, IPAddressFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(testAddr, 14));
 
-	
+	// Always permit traffic from known applications.
+	logFilter("allowPIA", _filters.permitPIA, params.allowPIA);
+	std::wstring exePath = L"D:\\work\\qihoo\\wfpTest\\x64\\Debug\\wfpTest.exe";
+	updateBooleanFilter(permitPIA[0], params.allowPIA, ApplicationFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(exePath, 15));
+
+
+	// Always permit loopback traffic, including IPv6.
+	logFilter("allowLoopback", _filters.permitLocalhost, params.allowLoopback);
+	updateBooleanFilter(permitLocalhost[0], params.allowLoopback, LocalhostFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(15));
+	updateBooleanFilter(permitLocalhost[1], params.allowLoopback, LocalhostFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>(15));
+
+	// Get the current set of excluded app IDs.  If they've changed we recreate
+	// all app rules, but if they stay the same we don't recreate them.
+	std::set<const AppIdKey*, PtrValueLess> newExcludedApps, newVpnOnlyApps;
 }
 
 

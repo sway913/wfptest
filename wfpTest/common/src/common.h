@@ -24,6 +24,7 @@
 #include "builtin/common.h" // must be first
 #include "builtin/util.h"
 #include "builtin/error.h"
+#include "win/win_util.h"
 #include <iostream>
 #include <assert.h>
 
