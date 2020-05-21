@@ -55,7 +55,7 @@ Daemon::~Daemon()
 
 void Daemon::reportError(Error error)
 {
-
+	std::cout << "reportError" << std::endl;
 }
 
 
