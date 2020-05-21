@@ -237,7 +237,7 @@ struct BasicFirewallFilter : public FirewallFilter
 
 // Base class for a basic filter with a number of conditions on it
 template<UINT32 conditionCount, FWP_ACTION_TYPE action, FWP_DIRECTION direction, FWP_IP_VERSION ipVersion>
-struct ConditionalFirewallFilter : BasicFirewallFilter<action, direction, ipVersion>
+struct ConditionalFirewallFilter : public BasicFirewallFilter<action, direction, ipVersion>
 {
 	std::vector<FWPM_FILTER_CONDITION> conditions;
 
@@ -253,6 +253,7 @@ struct ConditionalFirewallFilter : BasicFirewallFilter<action, direction, ipVers
 		this->numFilterConditions = totalConditionCount;
 		this->filterCondition = conditions.empty() ? nullptr : conditions.data();
 	}
+
 
 	template<FWP_DATA_TYPE dataType>
 	void setCondition(const GUID& fieldKey, FWP_MATCH_TYPE matchType, const typename impl::FWP_DATA_Accessor<dataType>::type& value)
