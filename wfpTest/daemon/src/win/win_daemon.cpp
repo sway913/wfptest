@@ -66,6 +66,7 @@ WinDaemon::WinDaemon()
     , MessageWnd(WindowType::Invisible)
     , _firewall(new FirewallEngine())
     , _lastConnected{false}
+	, _wfpCalloutMonitor{ L"PiaWfpCallout" }
 {
 	_filters = FirewallFilters{};
 	_filterAdapterLuid = 0;

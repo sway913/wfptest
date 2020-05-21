@@ -26,6 +26,7 @@
 #include "daemon.h"
 #include "win_firewall.h"
 #include "win_appmonitor.h"
+#include "servicemonitor.h"
 #include "win/win_messagewnd.h"
 
 //inline const PMIB_IPINTERFACE_ROW foo{nullptr};
@@ -143,6 +144,8 @@ protected:
 	// the WFP filters.
 	UINT64 _filterAdapterLuid;  // LUID of the TAP adapter used in some rules
     WinUnbiasedDeadline _resumeGracePeriod;
+	ServiceMonitor _wfpCalloutMonitor;
+	WinAppMonitor _appMonitor;
 };
 
 #undef g_daemon
