@@ -146,6 +146,13 @@ public:
         LocalSocketConnectionFailed = 1900,
     };
  
+public:
+	Error()
+		: _systemCode(0) {}
+
+	Error(Code code, const char* params)
+		: _code(code) {}
+
 
 #if defined(Q_OS_WIN)
     typedef unsigned long SystemCode;
@@ -153,6 +160,9 @@ public:
     typedef int SystemCode;
 #endif
 
+protected:
+	Code _code;
+	SystemCode _systemCode;
 };
 
 

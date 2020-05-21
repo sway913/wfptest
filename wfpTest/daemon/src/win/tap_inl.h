@@ -95,7 +95,7 @@ public:
     std::string printable() const
     {
         char buf[24];
-        _snprintf(buf, sizeof(buf), "%hu.%hu.%hu.%hu", _v0, _v1, _v2, _v3);
+		_snprintf_s(buf, sizeof(buf), "%hu.%hu.%hu.%hu", _v0, _v1, _v2, _v3);
         return {buf};
     }
 

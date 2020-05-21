@@ -65,38 +65,20 @@ WinDaemon::WinDaemon()
     , _firewall(new FirewallEngine())
     , _lastConnected{false}
 {
-	//_filters = FirewallFilters{};
-    //if (!_firewall->open() || !_firewall->installProvider())
-    //{
-    //    //qCritical() << "Unable to initialize WFP firewall";
-    //    delete _firewall;
-    //    _firewall = nullptr;
-    //}
-    //else
-    //{
-    //    _firewall->removeAll();
-    //}
+	_filters = FirewallFilters{};
+	_filterAdapterLuid = 0;
 
-    // Qt for some reason passes Unix CA directories to OpenSSL by default on
-    // Windows.  This results in the daemon attempting to load CA certificates
-    // from C:\etc\ssl\, etc., which are not privileged directories on Windows.
-    //
-    // This seems to be an oversight.  QSslSocketPrivate::ensureCiphersAndCertsLoaded()
-    // enables s_loadRootCertsOnDemand on Windows supposedly to permit fetching
-    // CAs from Windows Update.  It's not clear how Windows would actually be
-    // notified to fetch the certificates though, since Qt handles TLS itself
-    // with OpenSSL.  The implementation of QSslCertificate::verify() does load
-    // updated system certificates if this flag is set, but that still doesn't
-    // mean that Windows would know to fetch a new root.
-    //
-    // Qt has already loaded the system CA certs as the default CAs by this
-    // point, this just sets s_loadRootCertsOnDemand back to false to prevent
-    // the Unix paths from being applied.
-    //
-    // This might break QSslCertificate::verify(), but PIA does not use this
-    // since it is not provided on the Mac SecureTransport backend, we implement
-    // this operation with OpenSSL directly.  Qt does not use
-    // QSslCertificate::verify(), it's just provided for application use.  (It's
+	if (!_firewall->open() || !_firewall->installProvider())
+	{
+		//qCritical() << "Unable to initialize WFP firewall";
+		delete _firewall;
+		_firewall = nullptr;
+	}
+	else
+	{
+		_firewall->removeAll();
+	}
+
 
 }
 
@@ -236,11 +218,151 @@ LRESULT WinDaemon::proc(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
+
+static void logFilter(const char* filterName, int currentState, bool enableCondition, bool invalidateCondition = false)
+{
+	if (enableCondition ? currentState != 1 || invalidateCondition : currentState != 0)
+		printf("%s: %s -> %s", filterName, currentState == 1 ? "ON" : currentState == 0 ? "OFF" : "MIXED", enableCondition ? "ON" : "OFF");
+	else
+		printf("%s: %s", filterName, enableCondition ? "ON" : "OFF");
+}
+
+static void logFilter(const char* filterName, const GUID& filterVariable, bool enableCondition, bool invalidateCondition = false)
+{
+	logFilter(filterName, filterVariable == zeroGuid ? 0 : 1, enableCondition, invalidateCondition);
+}
+
+template<class FilterObjType, size_t N>
+static void logFilter(const char* filterName, const FilterObjType(&filterVariables)[N], bool enableCondition, bool invalidateCondition = false)
+{
+	int state = filterVariables[0] == zeroGuid ? 0 : 1;
+	for (size_t i = 1; i < N; i++)
+	{
+		int s = filterVariables[i] == zeroGuid ? 0 : 1;
+		if (s != state)
+		{
+			state = 2;
+			break;
+		}
+	}
+	logFilter(filterName, state, enableCondition, invalidateCondition);
+}
+
+
 void WinDaemon::applyFirewallRules(const FirewallParams& params)
 {
     if (!_firewall)
         return;
-    
+	std::string dns = "";
+	std::list<std::string> dnsServers; // default-constructed if missing
+	dnsServers.push_back(dns);
+	dnsServers.push_back(dns);
+
+	FirewallTransaction tx(_firewall);
+
+#define deactivateFilter(filterVariable, removeCondition) \
+    do { \
+        /* Remove existing rule if necessary */ \
+        if ((removeCondition) && filterVariable != zeroGuid) \
+        { \
+            if (!_firewall->remove(filterVariable)) { \
+                std::cout << "Failed to remove WFP filter" << #filterVariable; \
+            } \
+            filterVariable = {zeroGuid}; \
+        } \
+    } \
+    while(false)
+#define activateFilter(filterVariable, addCondition, ...) \
+    do { \
+        /* Add new rule if necessary */ \
+        if ((addCondition) && filterVariable == zeroGuid) \
+        { \
+            if ((filterVariable = _firewall->add(__VA_ARGS__)) == zeroGuid) { \
+                reportError(Error(Error::FirewallRuleFailed, "")); \
+            } \
+        } \
+    } \
+    while(false)
+#define updateFilter(filterVariable, removeCondition, addCondition, ...) \
+    do { \
+        deactivateFilter(_filters.filterVariable, removeCondition); \
+        activateFilter(_filters.filterVariable, addCondition, __VA_ARGS__); \
+    } while(false)
+#define updateBooleanFilter(filterVariable, enableCondition, ...) \
+    do { \
+        const bool enable = (enableCondition); \
+        updateFilter(filterVariable, !enable, enable, __VA_ARGS__); \
+    } while(false)
+#define updateBooleanInvalidateFilter(filterVariable, enableCondition, invalidateCondition, ...) \
+    do { \
+        const bool enable = (enableCondition); \
+        const bool disable = !enable || (invalidateCondition); \
+        updateFilter(filterVariable, disable, enable, __VA_ARGS__); \
+    } while(false)
+#define filterActive(filterVariable) (_filters.filterVariable != zeroGuid)
+
+
+	//updateBooleanFilter(blockAll[0], params.blockAll, EverythingFilter<FWP_ACTION_BLOCK, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(0));
+
+	// Firewall rules, listed in order of ascending priority (as if the last
+	// matching rule applies, but note that it is the priority argument that
+	// actually determines precedence).
+
+	// As a bit of an exception to the normal firewall rule logic, the WFP
+	// rules handle the blockIPv6 rule by changing the priority of the IPv6
+	// part of the killswitch rule instead of having a dedicated IPv6 block.
+
+	// Block all other traffic when killswitch is enabled. If blockIPv6 is
+	// true, block IPv6 regardless of killswitch state.
+	logFilter("blockAll(IPv4)", _filters.blockAll[0], params.blockAll);
+	updateBooleanFilter(blockAll[0], params.blockAll, EverythingFilter<FWP_ACTION_BLOCK, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(0));
+	logFilter("blockAll(IPv6)", _filters.blockAll[1], params.blockAll || params.blockIPv6);
+	updateBooleanFilter(blockAll[1], params.blockAll || params.blockIPv6, EverythingFilter<FWP_ACTION_BLOCK, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>(params.blockIPv6 ? 4 : 0));
+
+	// Exempt traffic going over the VPN adapter.  This is the TAP adapter for
+	// OpenVPN, or the WinTUN adapter for Wireguard.
+	UINT64 luid = 0;
+	logFilter("allowVPN", _filters.permitAdapter, luid && params.allowVPN, luid != _filterAdapterLuid);
+	updateBooleanInvalidateFilter(permitAdapter[0], luid && params.allowVPN, luid != _filterAdapterLuid, InterfaceFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(luid, 2));
+	//updateBooleanInvalidateFilter(permitAdapter[1], luid && params.allowVPN, luid != _filterAdapterLuid, InterfaceFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>(luid, 2));
+	//_filterAdapterLuid = luid;
+
+	// Note: This is where the IPv6 block rule is ordered if blockIPv6 is true.
+
+   // Exempt DHCP traffic.
+	logFilter("allowDHCP", _filters.permitDHCP, params.allowDHCP);
+	/*updateBooleanFilter(permitDHCP[0], params.allowDHCP, DHCPFilter<FWP_ACTION_PERMIT, FWP_IP_VERSION_V4>(6));
+	updateBooleanFilter(permitDHCP[1], params.allowDHCP, DHCPFilter<FWP_ACTION_PERMIT, FWP_IP_VERSION_V6>(6));
+*/
+	// Permit LAN traffic depending on settings
+	logFilter("allowLAN", _filters.permitLAN, params.allowLAN);
+	//updateBooleanFilter(permitLAN[0], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("192.168.0.0/16", 8));
+	//updateBooleanFilter(permitLAN[1], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("172.16.0.0/12", 8));
+	//updateBooleanFilter(permitLAN[2], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("10.0.0.0/8", 8));
+	//updateBooleanFilter(permitLAN[3], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("224.0.0.0/4", 8));
+	//updateBooleanFilter(permitLAN[4], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("169.254.0.0/16", 8));
+	//updateBooleanFilter(permitLAN[5], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>("255.255.255.255/32", 8));
+	//updateBooleanFilter(permitLAN[6], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>("fc00::/7", 8));
+	//updateBooleanFilter(permitLAN[7], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>("fe80::/10", 8));
+	//updateBooleanFilter(permitLAN[8], params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>("ff00::/8", 8));
+
+	// Permit the IPv6 global Network Prefix - this allows on-link IPv6 hosts to communicate using their global IPs
+	// which is more common in practice than link-local
+	//updateBooleanFilter(permitLAN[9], params.netScan.hasIpv6() && params.allowLAN, IPSubnetFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V6>("0/64", 8));
+	// First 64 bits of a global IPv6 IP is the Network Prefix.
+
+	//// Add rules to block non-PIA DNS servers if connected and DNS leak protection is enabled
+	//logFilter("blockDNS", _filters.blockDNS, params.blockDNS);
+	//updateBooleanFilter(blockDNS[0], params.blockDNS, DNSFilter<FWP_ACTION_BLOCK, FWP_IP_VERSION_V4>(10));
+	//updateBooleanFilter(blockDNS[1], params.blockDNS, DNSFilter<FWP_ACTION_BLOCK, FWP_IP_VERSION_V6>(10));
+	//logFilter("allowDNS(1)", _filters.permitDNS[0], 0, 0);
+	//const std::string testAddr = "";
+	//updateBooleanInvalidateFilter(permitDNS[0], 0, 0, IPAddressFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(testAddr, 14));
+
+	//logFilter("allowDNS(2)", _filters.permitDNS[1], 0, 0);
+	//updateBooleanInvalidateFilter(permitDNS[1], 0, 0, IPAddressFilter<FWP_ACTION_PERMIT, FWP_DIRECTION_OUTBOUND, FWP_IP_VERSION_V4>(testAddr, 14));
+
+	
 }
 
 

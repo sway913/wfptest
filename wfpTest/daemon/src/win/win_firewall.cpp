@@ -31,6 +31,47 @@ static FWPM_SUBLAYER g_wfpSublayer = {
 	9000
 };
 
+
+FirewallFilter::FirewallFilter()
+{
+	memset(static_cast<FWPM_FILTER*>(this), 0, sizeof(FWPM_FILTER));
+	UuidCreate(&filterKey);
+	displayData.name = DEFAULT_FIREWALL_NAME;
+	displayData.description = DEFAULT_FIREWALL_DESCRIPTION;
+	flags = DEFAULT_FILTER_FLAGS;
+	providerKey = &g_wfpProvider.providerKey;
+	subLayerKey = g_wfpSublayer.subLayerKey;
+	weight.type = FWP_UINT8;
+}
+
+Callout::Callout(const GUID& applicableLayer, const GUID& calloutKey)
+{
+	//qWarning() << "---------------------ztz test -------------------- \n";
+	memset(static_cast<FWPM_CALLOUT*>(this), 0, sizeof(FWPM_CALLOUT));
+	displayData.name = const_cast<wchar_t*>(L"PIA WFP Callout");
+	displayData.description = const_cast<wchar_t*>(L"PIA WFP Callout");
+	providerKey = &g_wfpProvider.providerKey;
+	this->applicableLayer = applicableLayer;
+	this->calloutKey = calloutKey;
+	flags = FWPM_CALLOUT_FLAG_PERSISTENT | FWPM_CALLOUT_FLAG_USES_PROVIDER_CONTEXT;
+}
+
+ProviderContext::ProviderContext(void *pContextData, UINT32 dataSize)
+{
+	memset(static_cast<FWPM_PROVIDER_CONTEXT*>(this), 0, sizeof(FWPM_PROVIDER_CONTEXT));
+	UuidCreate(&this->providerContextKey);
+	displayData.name = const_cast<wchar_t*>(L"PIA WFP Provider Context");
+	displayData.description = const_cast<wchar_t*>(L"PIA WFP Provider Context");
+	providerKey = &g_wfpProvider.providerKey;
+	blob.data = static_cast<UINT8*>(pContextData);
+	blob.size = dataSize;
+
+	flags = FWPM_PROVIDER_CONTEXT_FLAG_PERSISTENT;
+	type = FWPM_GENERAL_CONTEXT;
+	dataBuffer = &blob;
+}
+
+
 FirewallEngine::FirewallEngine()
 	: _handle(NULL) {
 
@@ -156,6 +197,38 @@ bool FirewallEngine::remove(const WfpProviderContextObject &providerContext)
 	return true;
 }
 
+WfpFilterObject FirewallEngine::add(const FirewallFilter& filter)
+{
+	UINT64 id = 0;
+	if (DWORD error = FwpmFilterAdd(_handle, &filter, NULL, &id))
+	{
+		//qCritical(SystemError(HERE, error));
+		return { zeroGuid };
+	}
+	return { filter.filterKey };
+}
+
+WfpCalloutObject FirewallEngine::add(const Callout& mCallout)
+{
+	UINT32 id = 0;
+	if (DWORD error = FwpmCalloutAdd(_handle, &mCallout, NULL, &id))
+	{
+		//qCritical(SystemError(HERE, error));
+		return { zeroGuid };
+	}
+	return { mCallout.calloutKey };
+}
+
+WfpProviderContextObject FirewallEngine::add(const ProviderContext& providerContext)
+{
+	UINT64 id = 0;
+	if (DWORD error = FwpmProviderContextAdd(_handle, &providerContext, NULL, &id))
+	{
+		//qCritical(SystemError(HERE, error));
+		return { zeroGuid };
+	}
+	return { providerContext.providerContextKey };
+}
 
 bool FirewallEngine::removeAll()
 {
@@ -304,4 +377,48 @@ bool FirewallEngine::removeProviderContexts()
 	{
 		return remove(WfpProviderContextObject{ providerContext.providerContextKey });
 	});
+}
+
+
+FirewallTransaction::FirewallTransaction(FirewallEngine* firewall)
+	: _handle(firewall ? firewall->_handle : NULL)
+{
+	if (_handle)
+	{
+		if (DWORD error = FwpmTransactionBegin(_handle, 0))
+		{
+			//qCritical(SystemError(HERE, error));
+			_handle = NULL;
+		}
+	}
+}
+
+FirewallTransaction::~FirewallTransaction()
+{
+	abort();
+}
+
+void FirewallTransaction::commit()
+{
+	if (_handle)
+	{
+		if (DWORD error = FwpmTransactionCommit(_handle))
+		{
+			//qCritical(SystemError(HERE, error));
+		}
+		else
+			_handle = NULL;
+	}
+}
+
+void FirewallTransaction::abort()
+{
+	if (_handle)
+	{
+		if (DWORD error = FwpmTransactionAbort(_handle))
+		{
+			//qCritical(SystemError(HERE, error));
+		}
+		_handle = NULL;
+	}
 }

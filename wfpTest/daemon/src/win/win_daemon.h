@@ -110,35 +110,37 @@ public:
 
 protected:
     FirewallEngine* _firewall;
-    //struct FirewallFilters
-    //{
-    //    WfpFilterObject permitPIA[6];
-    //    WfpFilterObject permitAdapter[2];
-    //    WfpFilterObject permitLocalhost[2];
-    //    WfpFilterObject permitDHCP[2];
-    //    WfpFilterObject permitLAN[10];
-    //    WfpFilterObject blockDNS[2];
-    //    WfpFilterObject permitDNS[2];
-    //    WfpFilterObject blockAll[2];
-    //    WfpFilterObject permitHnsd[2];
-    //    WfpFilterObject blockHnsd[2];
+    struct FirewallFilters
+    {
+        WfpFilterObject permitPIA[6];
+        WfpFilterObject permitAdapter[2];
+        WfpFilterObject permitLocalhost[2];
+        WfpFilterObject permitDHCP[2];
+        WfpFilterObject permitLAN[10];
+        WfpFilterObject blockDNS[2];
+        WfpFilterObject permitDNS[2];
+        WfpFilterObject blockAll[2];
+        WfpFilterObject permitHnsd[2];
+        WfpFilterObject blockHnsd[2];
 
-    //    // This is not strictly a filter, but it can in nearly all respects be treated the same way
-    //    // so we store it here for simplicity and so we can re-use the filter-related code
-    //    WfpCalloutObject splitCalloutBind;
-    //    WfpCalloutObject splitCalloutConnect;
+        // This is not strictly a filter, but it can in nearly all respects be treated the same way
+        // so we store it here for simplicity and so we can re-use the filter-related code
+        WfpCalloutObject splitCalloutBind;
+        WfpCalloutObject splitCalloutConnect;
 
-    //    WfpProviderContextObject providerContextKey;
-    //    WfpProviderContextObject vpnOnlyProviderContextKey;
+        WfpProviderContextObject providerContextKey;
+        WfpProviderContextObject vpnOnlyProviderContextKey;
 
-    //} _filters;
+    } _filters;
 
   
 
     // The last 'hasConnected' state and local VPN IP address used to create the
     // VPN-only split tunnel rules - the rules are recreated if they change
     bool _lastConnected;
-
+	// This is contextual information we need to detect invalidation of some of
+	// the WFP filters.
+	UINT64 _filterAdapterLuid;  // LUID of the TAP adapter used in some rules
     WinUnbiasedDeadline _resumeGracePeriod;
 };
 

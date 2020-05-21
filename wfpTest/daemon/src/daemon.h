@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <iostream>
+#include <list>
 
 
 class OriginalNetworkScan
@@ -106,6 +107,8 @@ struct FirewallParams
     // When connected or connecting, whether the VPN is being used as the
     // default route.  ('true' when not connected.)
     bool defaultRoute;
+
+	std::list<std::string> effectiveDnsServers;
 
     // Whether to enable split tunnel.  Split tunnel is enabled whenever the
     // setting is enabled, even if the PIA client is not logged in.  This is
